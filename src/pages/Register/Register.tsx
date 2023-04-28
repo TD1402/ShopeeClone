@@ -3,7 +3,12 @@ import React from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import Input from 'src/components/Input'
-import { getRules, schema, Schema } from 'src/utils/rules'
+import { schema, Schema } from 'src/utils/rules'
+import { useMutation } from '@tanstack/react-query'
+import { registerAccount } from 'src/apis/auth.api'
+import { omit } from 'lodash'
+import { isAxiosUnprocessableEntityError } from 'src/utils/utils'
+import { ResponseApi } from 'src/types/utils.type'
 
 // interface FormData {
 //   email: string
@@ -18,23 +23,43 @@ export default function Register() {
     register,
     handleSubmit,
     watch,
-    getValues,
+    setError,
     formState: { errors }
   } = useForm<FormData>({
     resolver: yupResolver(schema)
   })
 
-  const rules = getRules(getValues)
-  const onSubmit = handleSubmit(
-    (data) => {
-      console.log(data)
-    },
-    (data) => {
-      const password = getValues('password')
+  const registerAccountMutation = useMutation({
+    mutationFn: (body: Omit<FormData, 'confirm_password'>) => registerAccount(body)
+  })
 
-      console.log(password)
-    }
-  )
+  const onSubmit = handleSubmit((data) => {
+    // console.log(data)
+    const body = omit(data, ['confirm_password'])
+    registerAccountMutation.mutate(body, {
+      onSuccess: (data) => {
+        console.log(data)
+      },
+      onError: (error) => {
+        // console.log(error)
+        if (isAxiosUnprocessableEntityError<ResponseApi<Omit<FormData, 'confirm_password'>>>(error)) {
+          const fromError = error.response?.data.data
+          if (fromError?.email) {
+            setError('email', {
+              message: fromError.email,
+              type: 'Server'
+            })
+          }
+          if (fromError?.password) {
+            setError('password', {
+              message: fromError.password,
+              type: 'Server'
+            })
+          }
+        }
+      }
+    })
+  })
 
   // const email = watch('password')
   // console.log(email)

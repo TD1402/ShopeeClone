@@ -1,16 +1,56 @@
 import React from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
+import { yupResolver } from '@hookform/resolvers/yup'
+import Input from 'src/components/Input'
+import { schema, Schema } from 'src/utils/rules'
+import { useMutation } from '@tanstack/react-query'
+import { loginAccount } from 'src/apis/auth.api'
+import { isAxiosUnprocessableEntityError } from 'src/utils/utils'
+import { ResponseApi } from 'src/types/utils.type'
 
+type FormData = Omit<Schema, 'confirm_password'>
+const loginSchema = schema.omit(['confirm_password'])
 export default function Login() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors }
-  } = useForm()
+  } = useForm<FormData>({
+    resolver: yupResolver(loginSchema)
+  })
+
+  const loginMutation = useMutation({
+    mutationFn: (body: Omit<FormData, 'confirm_password'>) => loginAccount(body)
+  })
 
   const onSubmit = handleSubmit((data) => {
-    console.log(data)
+    // console.log(data)
+
+    loginMutation.mutate(data, {
+      onSuccess: (data) => {
+        console.log(data)
+      },
+      onError: (error) => {
+        // console.log(error)
+        if (isAxiosUnprocessableEntityError<ResponseApi<FormData>>(error)) {
+          const fromError = error.response?.data.data
+          if (fromError?.email) {
+            setError('email', {
+              message: fromError.email,
+              type: 'Server'
+            })
+          }
+          if (fromError?.password) {
+            setError('password', {
+              message: fromError.password,
+              type: 'Server'
+            })
+          }
+        }
+      }
+    })
   })
 
   return (
@@ -20,7 +60,27 @@ export default function Login() {
           <div className='lg:col-span-2 lg:col-start-4'>
             <form className='rounded bg-white p-10 shadow-sm' onSubmit={onSubmit}>
               <div className='text-2xl'>Đăng Nhâp</div>
-              <div className='mt-8'>
+              <Input
+                className='mt-8'
+                type='string'
+                name='email'
+                register={register}
+                placeholder='Email'
+                autoComplete='on'
+                // rules={rules.email}
+                errorMesssage={errors.email?.message}
+              />
+              <Input
+                className='mt-4'
+                type='password'
+                name='password'
+                register={register}
+                placeholder='Password'
+                autoComplete='on'
+                // rules={rules.password}
+                errorMesssage={errors.password?.message}
+              />
+              {/* <div className='mt-8'>
                 <input
                   type='email'
                   name='email'
@@ -38,7 +98,7 @@ export default function Login() {
                   autoComplete='on'
                 />
                 <div className='mt-1 min-h-[1rem] text-sm text-red-600'>Password không hợp lệ </div>
-              </div>
+              </div> */}
               <div className='mt-3'>
                 <button
                   type='submit'
