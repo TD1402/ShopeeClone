@@ -15,6 +15,7 @@ export default {
     }
   },
   plugins: [
+    
     plugin(function ({ addComponents, theme }) {
       addComponents({
         '.container': {
@@ -26,6 +27,7 @@ export default {
           paddingRight: theme('spacing.4')
         }
       })
-    })
+    }),
+    require('@tailwindcss/line-clamp'),
   ]
 }
